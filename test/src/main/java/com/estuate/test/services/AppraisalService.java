@@ -136,4 +136,52 @@ public class AppraisalService {
 		return revisedEmployees;
 	}
 
+	public List<Employee> getAdjustedEmployeeRatings() {
+		
+		List<CategoryDeviation> deviations = getDeviations();
+		List<Employee> employees = employeeRepository.findAll();
+
+		
+		Map<Character, Double> deviationMap = deviations.stream()
+				.collect(Collectors.toMap(CategoryDeviation::getCategory, CategoryDeviation::getDeviation));
+
+		
+		List<Employee> adjustedEmployees = new ArrayList<>(employees);
+
+		
+		while (true) {
+			
+			Character overRepresented = getCategoryWithHighestDeviation(deviationMap, true);
+			Character underRepresented = getCategoryWithHighestDeviation(deviationMap, false);
+
+			
+			if (overRepresented == null || underRepresented == null)
+				break;
+
+			
+			Employee employeeToAdjust = adjustedEmployees.stream()
+					.filter(emp -> emp.getRating().equals(overRepresented)).findFirst().orElse(null);
+
+			if (employeeToAdjust != null) {
+				
+				employeeToAdjust.setRating(underRepresented);
+
+				
+				double totalEmployees = adjustedEmployees.size();
+				deviationMap.put(overRepresented, deviationMap.get(overRepresented) - (100.0 / totalEmployees));
+				deviationMap.put(underRepresented, deviationMap.get(underRepresented) + (100.0 / totalEmployees));
+			}
+		}
+
+		
+		return adjustedEmployees;
+	}
+
+	private Character getCategoryWithHighestDeviation(Map<Character, Double> deviations, boolean positive) {
+		return deviations.entrySet().stream()
+				.filter(entry -> (positive && entry.getValue() > 0) || (!positive && entry.getValue() < 0))
+				.max(Comparator.comparingDouble(entry -> Math.abs(entry.getValue()))).map(Map.Entry::getKey)
+				.orElse(null);
+	}
+
 }
