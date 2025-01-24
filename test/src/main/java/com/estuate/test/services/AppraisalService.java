@@ -40,11 +40,12 @@ public class AppraisalService {
 			long actualCount = actualCounts.getOrDefault(category.getCategory_Id(), 0L);
 			double actualPercentage = totalEmployees > 0 ? (double) actualCount / totalEmployees * 100 : 0.0;
 
-			categoryRepository.saveAll(categories);
-
 			category.setActual_Percentage(actualPercentage);
 
 		}
+
+		categoryRepository.saveAll(categories);
+
 		return categoryRepository.findAll();
 	}
 
