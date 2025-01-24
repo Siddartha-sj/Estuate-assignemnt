@@ -27,6 +27,24 @@ public class AppraisalService {
 
 	public List<Category> getActualPercentages() {
 
+		List<Employee> employees = employeeRepository.findAll();
+		List<Category> categories = categoryRepository.findAll();
+
+		Map<Character, Long> actualCounts = employees.stream()
+				.collect(Collectors.groupingBy(Employee::getRating, Collectors.counting()));
+
+		long totalEmployees = employees.size();
+
+		for (Category category : categories) {
+
+			long actualCount = actualCounts.getOrDefault(category.getCategory_Id(), 0L);
+			double actualPercentage = totalEmployees > 0 ? (double) actualCount / totalEmployees * 100 : 0.0;
+
+			categoryRepository.saveAll(categories);
+
+			category.setActual_Percentage(actualPercentage);
+
+		}
 		return categoryRepository.findAll();
 	}
 
@@ -137,43 +155,36 @@ public class AppraisalService {
 	}
 
 	public List<Employee> getAdjustedEmployeeRatings() {
-		
+
 		List<CategoryDeviation> deviations = getDeviations();
 		List<Employee> employees = employeeRepository.findAll();
 
-		
 		Map<Character, Double> deviationMap = deviations.stream()
 				.collect(Collectors.toMap(CategoryDeviation::getCategory, CategoryDeviation::getDeviation));
 
-		
 		List<Employee> adjustedEmployees = new ArrayList<>(employees);
 
-		
 		while (true) {
-			
+
 			Character overRepresented = getCategoryWithHighestDeviation(deviationMap, true);
 			Character underRepresented = getCategoryWithHighestDeviation(deviationMap, false);
 
-			
 			if (overRepresented == null || underRepresented == null)
 				break;
 
-			
 			Employee employeeToAdjust = adjustedEmployees.stream()
 					.filter(emp -> emp.getRating().equals(overRepresented)).findFirst().orElse(null);
 
 			if (employeeToAdjust != null) {
-				
+
 				employeeToAdjust.setRating(underRepresented);
 
-				
 				double totalEmployees = adjustedEmployees.size();
 				deviationMap.put(overRepresented, deviationMap.get(overRepresented) - (100.0 / totalEmployees));
 				deviationMap.put(underRepresented, deviationMap.get(underRepresented) + (100.0 / totalEmployees));
 			}
 		}
 
-		
 		return adjustedEmployees;
 	}
 
